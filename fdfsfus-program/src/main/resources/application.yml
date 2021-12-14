@@ -1,0 +1,73 @@
+############################################################
+#
+# 文件微服务
+# web访问端口号：8004
+#
+############################################################
+server:
+  port: 8004
+  tomcat:
+    uri-encoding: UTF-8
+    max-swallow-size: -1  # tomcat默认大小2M，超过2M的文件不会被捕获，需要调整此处大小为100MB或者-1即可
+
+############################################################
+#
+# 配置项目信息
+#
+############################################################
+spring:
+  redis:
+    database: 0
+    host: 192.168.1.1
+    port: 6379
+    password: "123"
+  application:
+    name: fdfsfus
+    #连接nacos
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.1:8848
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  servlet:
+    multipart:
+      max-file-size: 512000000   # 请求的文件大小限制为500kb
+      max-request-size: 51200000
+
+############################################################
+#
+# fdfs 配置
+#
+############################################################
+fdfs:
+  so-timeout: 15000
+  connect-timeout: 6000
+  pool:
+    #从池中借出的对象的最大数目（配置为-1表示不限制）
+    max-total: -1
+    #获取连接时的最大等待毫秒数(默认配置为5秒)
+    max-wait-millis: 500000
+    #每个key最大连接数
+    max-total-per-key: 50
+    #每个key对应的连接池最大空闲连接数
+    max-idle-per-key: 10
+    #每个key对应的连接池最小空闲连接数
+    min-idle-per-key: 5
+    jmx-enabled: false
+  thumb-image:
+    width: 100
+    height: 100
+  tracker-list: 192.168.1.1:22122   # tracker服务所在的ip地址和端口号
+
+logging:
+  level:
+    org.fdfsfus.controller.*: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+

@@ -1,0 +1,10 @@
+#连接nacos配置中心(不使用就去掉)
+spring:
+  cloud:
+    nacos:
+      config:
+        server-addr: 192.168.1.1:8848 #配置中心地址
+        file-extension: yaml #指定动态配置格式
+        namespace: ""    #配置中心ID（默认为空）
+      discovery:
+        server-addr: 192.168.1.1:8848
