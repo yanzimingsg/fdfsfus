@@ -23,7 +23,7 @@ spring:
     password: "123"
   application:
     name: fdfsfus
-    #连接nacos
+    #连接nacos（不使用就去掉）
   cloud:
     nacos:
       discovery:
