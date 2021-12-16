@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <!--引入CSS-->
+    <link rel="stylesheet" type="text/css" href="css/webuploader.css">
+    <!--引入JS-->
+    <!--引入JS-->
+    <script type="text/javascript" src="js/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="js/webuploader.js"></script>
+	
+    <script type="text/javascript">
+      $(function() {
+        //开始上传按钮
+        var $btn = $('#ctlBtn');
+        //文件信息显示区域
+        var $list = $('#thelist');
+        //当前状态
+        var state = 'pending';
+        //待上传文件的md5值（key为file id）
+        var md5 = {};
+		//文件id
+		var fileId = {};
+ 
+        // WebUploader提供的钩子（hook），在文件上传前先判断服务是否已存在这个文件 实现秒传
+        WebUploader.Uploader.register({
+          'before-send-file': 'beforeSendFile' //整个文件上传前
+        }, {
+          beforeSendFile: function( file ) {
+            var _that = this;
+            var deferred = WebUploader.Deferred();
+			console.log(fileId);
+            //上传前请求服务端,判断文件是否已经上传过
+            // $.post("http://192.168.1.50:8004/fs/checkFile", { md5: md5[file.id], onlyId: fileId},
+            $.post("http://localhost:8004/fs/checkFile", { md5: md5[file.id], onlyId: fileId},
+            function(data){
+				console.log(data.data)
+              if (data.data != 0) {
+                _that.owner.skipFile( file );
+				$( '#'+file.id ).find('p.path').text('路径'+data.data);
+              }
+              // 继续后面行为
+              deferred.resolve();
+            });
+            return deferred.promise();
+          }
+        });
+ 
+        //初始化Web Uploader
+        var uploader = WebUploader.create({
+            // swf文件路径
+            swf: 'js/Uploader.swf',
+            // 文件接收服务端。
+            // server: 'http://192.168.1.50:8004/fs/uploadBigFileConcurrent',
+            server: 'http://localhost:8004/fs/uploadBigFileConcurrent',
+            // 选择文件的按钮。可选。
+            // 内部根据当前运行是创建，可能是input元素，也可能是flash.
+            pick: '#picker',
+			// 不压缩image, 默认如果是jpeg，文件上传前会压缩一把再上传！
+			resize: false,
+			//配置压缩的图片的选项。如果此选项为false, 则图片在上传前不进行压缩。
+			compress: false,
+			//是否要分片处理大文件上传。
+			chunked: true,
+			//分片大小
+			chunkSize: 1048576,
+			//设置文件上传域的name。
+			fileVal: "file",
+			//上传并发数。允许同时最大上传进程数。
+			threads:3,
+			// 只允许选择图片文件。
+			accept: {
+			    title: 'Images',
+			    extensions: 'gif,jpg,jpeg,bmp,png',
+			    mimeTypes: 'image/*'
+			}
+        });
+ 
+        // 当有文件被添加进队列的时候（选择文件后调用）
+        uploader.on( 'fileQueued', function( file ) {
+          $list.append( '<div id="' + file.id + '" class="item">' +
+              '<h4 class="info">' + file.name + '</h4>' +
+              '<p class="md5"></p>' +
+              '<p class="onlyId"></p>' +
+              '<p class="state"></p>' +
+              '<p class="path"></p>' +
+          '</div>' );
+          //获取文件MD5值
+          md5[file.id] = '';
+          uploader.md5File( file )// 及时显示进度
+            .progress(function(percentage) {
+              $( '#'+file.id ).find('.md5').text('读取文件：'+parseInt(percentage*100)+"%");
+            })
+            // 完成
+            .then(function(val) {
+              md5[file.id] = val;
+			  fileId[val] = guid();
+			  console.log(fileId);
+              $( '#'+file.id ).find('.md5').text('md5值：' + val);
+              $( '#'+file.id ).find('.onlyId').text('onlyId值：' + fileId[val]);
+              $( '#'+file.id ).find('.state').text('等待上传...');
+            });
+        });
+		
+		uploader.on( 'uploadBeforeSend', function( block, paramMap ) {
+		    // block为分块数据。
+		    // file为分块对应的file对象。
+		    var file = block.file;
+		    // 修改paramMap可以控制发送哪些携带数据。
+			var fileMd5 = md5[file.id];
+			// 将存在file对象中的md5数据携带发送过去。
+			paramMap.md5 = fileMd5;
+			//用户或文件的唯一ID
+		    paramMap.onlyId = fileId[fileMd5];
+		    // 删除其他数据
+		    // delete data.key;
+		});
+ 
+        // 文件上传过程中创建进度条实时显示。
+        uploader.on( 'uploadProgress', function( file, percentage ) {
+            var $li = $( '#'+file.id );
+            $li.find('p.state').text('上传中（' + parseInt(percentage * 100) + '%）');
+        });
+ 
+        // 文件上传成功后会调用
+        uploader.on( 'uploadSuccess', function( file,response ) {
+            $( '#'+file.id ).find('p.state').text('上传成功');
+			if (response != null && response != undefined) {
+				console.log(response.data);
+				$( '#'+file.id ).find('p.path').text('路径'+response.data);
+			}
+        });
+ 
+        // 文件上传失败后会调用
+        uploader.on( 'uploadError', function( file ) {
+            $( '#'+file.id ).find('p.state').text('上传出错');
+        });
+ 
+        // 文件上传完毕后会调用（不管成功还是失败）
+        uploader.on( 'uploadComplete', function( file ) {
+            $( '#'+file.id ).find('.progress').fadeOut();
+        });
+ 
+        // all事件（所有的事件触发都会响应到）
+        uploader.on( 'all', function( type ) {
+            if ( type === 'startUpload' ) {
+                state = 'uploading';
+            } else if ( type === 'stopUpload' ) {
+                state = 'paused';
+            } else if ( type === 'uploadFinished' ) {
+                state = 'done';
+            }
+ 
+            if ( state === 'uploading' ) {
+                $btn.text('暂停上传');
+            } else {
+                $btn.text('开始上传');
+            }
+        });
+ 
+        // 开始上传按钮点击事件响应
+        $btn.on( 'click', function() {
+            if ( state === 'uploading' ) {
+                uploader.stop();
+            } else {
+                // 不存在则上传文件
+                uploader.upload();
+            }
+        });
+		
+		
+//随机数
+	  function guid() {
+	      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+	          var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+	          return v.toString(16);
+	      });
+	  }
+	  
+      });
+	  
+    </script>
+    <style>
+      #picker {
+        display: inline-block;
+      }
+      #ctlBtn {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+        background: #EFEFEF;
+        padding: 10px 15px;
+        color: #2E2E2E;
+        text-align: center;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      #ctlBtn:hover {
+        background: #DDDDDD;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="uploader" class="wu-example">
+		<div id="">
+			用于大图片分片上传
+		</div>
+        <div class="btns">
+            <div id="picker">选择文件</div>
+            <div id="ctlBtn" class="webuploader-upload">开始上传</div>
+        </div>
+        <!--用来存放文件信息-->
+        <div id="thelist" class="uploader-list"></div>
+    </div>
+  </body>
+</html>

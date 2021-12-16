@@ -139,8 +139,12 @@ public class UploadFileController extends BasicShare implements UploadFileContro
         String suffix = fileNameAll[fileNameAll.length -1];
         //当前第几块
         String chunk =  (String) paramMap.get("chunk");
+        String chunksStr = (String) paramMap.get("chunks");
+        if (chunksStr==null) {
+            return GraceJSONResult.errorCustom(ResponseStatusEnum.FILE_CHUNKS_NOT_NULL);
+        }
         //总块数
-        int chunks = Integer.parseInt((String) paramMap.get("chunks"));
+        int chunks = Integer.parseInt(chunksStr);
         //获取文件MD5
         String fileMd5 = (String) paramMap.get("md5");
         String path = null;

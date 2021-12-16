@@ -48,6 +48,7 @@ public interface UploadPictureControllerApi {
 
     /**
      * 用于上传大图片（ 500kb 以上）
+     * 不能断点上传
      * @param request
      * @return 结果
      * @throws Exception 错误
@@ -59,7 +60,8 @@ public interface UploadPictureControllerApi {
     public GraceJSONResult uploadBigIMG(@RequestParam FileUpload fileUpload, HttpServletRequest request) throws Exception;
 
     /**
-     * 用于并发上传大图片（ 1mb 以上）
+     * 用于并发/非并发上传大图片（ 1mb 以上）
+     * 可以断点上传
      * @param
      * @return 结果
      * @throws Exception 错误

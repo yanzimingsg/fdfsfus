@@ -55,6 +55,7 @@ public class GraceJSONResult {
         return new GraceJSONResult(ResponseStatusEnum.FAILED);
     }
 
+
     /**
      * 错误返回，map中包含了多条错误信息，可以用于表单验证，把错误统一的全部返回出去
      * @param map

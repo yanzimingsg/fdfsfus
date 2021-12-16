@@ -25,8 +25,6 @@ public class FileOperationController extends BasicShare implements FileOperation
     private final UploadFileService uploadFileService;
     private final RedisOperator redis;
 
-    private Map<Integer,byte[]> map = new HashMap<>();
-
     public FileOperationController(UploadFileService uploadFileService, RedisOperator redis) {
         this.uploadFileService = uploadFileService;
         this.redis = redis;
@@ -35,7 +33,6 @@ public class FileOperationController extends BasicShare implements FileOperation
     @Override
     public GraceJSONResult checkFile(Map<String, Object> paramMap) throws Exception {
         String fileMd5 = (String) paramMap.get("md5");
-        String fileId = (String) paramMap.get("onlyId");
         String chunkKey = CHUNK + fileMd5;
         redis.set(chunkKey,"0");
         //模拟从mysql中查询文件表的md5,这里从redis里查询
