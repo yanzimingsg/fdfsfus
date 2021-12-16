@@ -5,10 +5,7 @@ import com.github.tobato.fastdfs.exception.FdfsUnsupportStorePathException;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -30,41 +27,23 @@ public class BasicShare {
         public static String IMG_TYPE_DMG = "bmp";
         public static String IMG_TYPE_GIF = "gif";
 
-        private  final static  String UPLOADING="Uploading:";
-        private final  static  String LOCK=UPLOADING+"lock:";
-        private  final  static String FILE=UPLOADING+"file:";
 
-        //当前所有锁(用在不同用户的上传前或重传前对整个文件的锁)
-        public  final static  String  currLocks=LOCK+"currLocks:";
-        //当前锁的拥有者
-        public  final static  String  lockOwner=LOCK+"lockOwner:";
-
-
-        //当前文件传输到第几块
-        public final  static  String CHUNK = FILE+"chunk:";
-
-        //当前文件传输到的总快数
-        public final  static  String CHUNKS = FILE+"chunks:";
-
-        //当前文件上传到fastdfs路径
-        public final static String FASTDFSPATH= FILE+"fastDfsPath:";
-
+        public final String FDFS = "fdfs:";
+        public  final String FASTDFSPATH = FDFS+"fastdfspath";
+        public final String CHUNKS = FDFS+"chunks:";
+        //用于判断已经上传的多少文件
+        public final String NUM_UP_FILE = FDFS + "num_up_file:";
+        //上传到FDFS后的路径
+        public final String FDFS_PATH = FDFS + "fdfs_path:";
+        //上传成功的文件MD5列表
+        public final String FDFS_MD5_LIST = FDFS+"fdfs_md5_list";
         //默认分组
         public final static  String DEFAULT_GROUP = "mike";
 
-        //保存所有上传成功的文件MD5
-        public final static String FILEMD5LIST=UPLOADING+"fileMd5List";
-
-        //文件块锁(解决同一个用户正在上传时并发解决,比如后端正在上传一个大文件块,前端页面点击删除按钮,
-        // 继续添加删除的文件,这时候要加锁来阻止其上传,否则会出现丢块问题,
-        // 因为fastdfs上传不像迅雷下载一样,下载时会创建一个完整的文件,如果上传第一块时,服务器能快速创建一个大文件0填充,那么这样可以支持并发乱序来下载文件块,上传速度会成倍提升,要实现乱序下载文件块,估计就得研究fastdfs源码了)
-        public  final static String CHUNKLOCK=LOCK+"chunkLock:";
-
-        //用与缓存每次上传一块的文件大小
-        public final static  String HISTORYUPLOAD="historyUpload:";
-
         //本地临时存储的文件路径
-        public static final  String FACE_PATH = "/Users/yanziming/Documents/mike/fdfs";
+        public static final  String FACE_PATH = "/Users/yanzimingsg/Documents/mike/fdfs";
+//        public static final  String FACE_PATH = "/mike/fdfs";
+
 
         /**
          * 解析路径
@@ -108,25 +87,25 @@ public class BasicShare {
                 return "";
         }
 
-        /**
-         * 从文件中获取MD5
-         * @param file
-         * @return
-         */
-        public String getMd5(MultipartFile file) {
-                try {
-                        //获取文件的byte信息
-                        byte[] uploadBytes = file.getBytes();
-                        // 拿到一个MD5转换器
-                        MessageDigest md5 = MessageDigest.getInstance("MD5");
-                        byte[] digest = md5.digest(uploadBytes);
-                        //转换为16进制
-                        return new BigInteger(1, digest).toString(16);
-                } catch (Exception e) {
-                        logger.error(e.getMessage());
-                }
-                return null;
-        }
+//        /**
+//         * 从文件中获取MD5
+//         * @param file
+//         * @return
+//         */
+//        public String getMd5(MultipartFile file) {
+//                try {
+//                        //获取文件的byte信息
+//                        byte[] uploadBytes = file.getBytes();
+//                        // 拿到一个MD5转换器
+//                        MessageDigest md5 = MessageDigest.getInstance("MD5");
+//                        byte[] digest = md5.digest(uploadBytes);
+//                        //转换为16进制
+//                        return new BigInteger(1, digest).toString(16);
+//                } catch (Exception e) {
+//                        logger.error(e.getMessage());
+//                }
+//                return null;
+//        }
 
 
         /**

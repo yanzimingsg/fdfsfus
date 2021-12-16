@@ -10,6 +10,8 @@ public enum ResponseStatusEnum {
     SUCCESS(200, true, "操作成功！"),
     FAILED(500, false, "操作失败！"),
 
+    FILE_ZERO(501,false,"0"),
+
     // 50x
     TICKET_INVALID(502,false,"会话失效，请重新登录！"),
 
@@ -24,6 +26,7 @@ public enum ResponseStatusEnum {
     USER_STATUS_ERROR(515,false,"用户状态参数出错！"),
     USER_NOT_EXIST_ERROR(516,false,"用户不存在！"),
     FILE_CHUNKS_NOT_NULL(517,false,"chunks不能为空"),
+    UPLOAD_FAIL(518,false,"上传失败，请重新上传！"),
 
     // 自定义系统级别异常 54x
     SYSTEM_INDEX_OUT_OF_BOUNDS(541, false, "系统错误，数组越界！"),

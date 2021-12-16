@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Map;
 
 
 /**
@@ -35,7 +34,7 @@ public interface UploadPictureControllerApi {
      * @throws Exception 错误
      */
     @PostMapping("/uploadIMG")
-    public GraceJSONResult uploadIMG(@RequestParam MultipartFile file) throws Exception;
+    public GraceJSONResult uploadIMG(@RequestParam MultipartFile file, String fileMd5) throws Exception;
 
     /**
      * 上传多张图片
@@ -47,27 +46,16 @@ public interface UploadPictureControllerApi {
     public GraceJSONResult uploadSomeIMG(@RequestParam MultipartFile[] files) throws Exception;
 
     /**
-     * 用于上传大图片（ 500kb 以上）
-     * 不能断点上传
-     * @param request
+     * 用于上传分片大文件
+     * @param fileUpload 上传实体类
      * @return 结果
-     * @throws Exception 错误
+     * @throws Exception
      */
-    @PostMapping("/uploadBigIMGMap")
-    public GraceJSONResult uploadBigIMG(@RequestParam Map<String, Object> paramMap, HttpServletRequest request) throws Exception;
+    @PostMapping("/bigIMGUpload")
+    public GraceJSONResult BigIMGUpload(FileUpload fileUpload, HttpServletRequest request) throws Exception;
 
-    @PostMapping("/uploadBigIMG")
-    public GraceJSONResult uploadBigIMG(@RequestParam FileUpload fileUpload, HttpServletRequest request) throws Exception;
 
-    /**
-     * 用于并发/非并发上传大图片（ 1mb 以上）
-     * 可以断点上传
-     * @param
-     * @return 结果
-     * @throws Exception 错误
-     */
-    @PostMapping("/uploadBigIMGConcurrent")
-    public GraceJSONResult uploadBigIMGConcurrent(@RequestParam Map<String, Object> paramMap, MultipartFile file) throws Exception;
+
 
 
 

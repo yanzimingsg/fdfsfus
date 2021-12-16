@@ -14,6 +14,7 @@
       $(function() {
         //开始上传按钮
         var $btn = $('#ctlBtn');
+		 var $pbtn = $('#pauseBtn');
         //文件信息显示区域
         var $list = $('#thelist');
         //当前状态
@@ -25,26 +26,71 @@
  
         // WebUploader提供的钩子（hook），在文件上传前先判断服务是否已存在这个文件 实现秒传
         WebUploader.Uploader.register({
-          'before-send-file': 'beforeSendFile' //整个文件上传前
+          'before-send-file': 'beforeSendFile', //整个文件上传前
+		  // 在文件所有分片都上传完后，且服务端没有错误返回后执行
+		  "after-send-file": "afterSendFile",
         }, {
           beforeSendFile: function( file ) {
             var _that = this;
             var deferred = WebUploader.Deferred();
-			console.log(fileId);
-            //上传前请求服务端,判断文件是否已经上传过
-            // $.post("http://192.168.1.50:8004/fs/checkFile", { md5: md5[file.id], onlyId: fileId},
-            $.post("http://localhost:8004/fs/checkFile", { md5: md5[file.id], onlyId: fileId},
-            function(data){
-				console.log(data.data)
-              if (data.data != 0) {
-                _that.owner.skipFile( file );
-				$( '#'+file.id ).find('p.path').text('路径'+data.data);
-              }
-              // 继续后面行为
-              deferred.resolve();
-            });
+			$.ajax({
+			    type: "POST",
+			    // url: "http://124.71.111.92:8004/fs/checkFile",
+			    url: "http://localhost:8004/fs/checkFile",
+			    data: {
+			        fileName: file.name,
+			        md5: md5[file.id],
+					type: file.type,
+					onlyId: fileId[md5[file.id]],
+					
+			    },
+			    success: function (data) {
+					console.log(data.data)
+					if (data.status != 501) {
+					  _that.owner.skipFile( file );
+					  $( '#'+file.id ).find('p.path').text('路径'+data.data);
+					}
+					// 继续后面行为
+					deferred.resolve();
+			    }, error: function (red) {
+					$( '#'+file.id ).find('p.path').text(red.msg);
+			    }
+			});
             return deferred.promise();
-          }
+          } ,
+		   afterSendFile: function (file) {
+            //如果所有分块上传成功，则通知后台合并分块
+            $.ajax({
+                type: "POST",
+                url: "http://localhost:8004/fs/FDFSMerge",
+                data: {
+                    fileName: file.name,
+                    md5: md5[file.id],
+					type: file.type,
+					onlyId: fileId[md5[file.id]],
+					chunks: file.chunks,
+					suffix: file.ext
+					
+                },
+                success: function (data) {
+					console.log(data)
+					if (data != null && data != undefined) {
+						console.log("上传成功："+ data.status);
+						console.log("上传成功："+ JSON.stringify(data));
+						if (data.status == 200) {
+							$( '#'+file.id ).find('p.state').text('上传成功');
+							$( '#'+file.id ).find('p.path').text('路径'+data.data);
+						}else if (data.status == 517) {
+							$( '#'+file.id ).find('p.state').text('上传失败');
+							$( '#'+file.id ).find('p.path').text(data.msg);
+						}
+					}
+                }, error: function (red) {
+					$( '#'+file.id ).find('p.path').text(red.msg);
+                }
+            });
+        }
+
         });
  
         //初始化Web Uploader
@@ -52,8 +98,7 @@
             // swf文件路径
             swf: 'js/Uploader.swf',
             // 文件接收服务端。
-            // server: 'http://192.168.1.50:8004/fs/uploadBigFileConcurrent',
-            server: 'http://localhost:8004/fs/uploadBigFileConcurrent',
+            server: 'http://localhost:8004/fs/bigFileUpload',
             // 选择文件的按钮。可选。
             // 内部根据当前运行是创建，可能是input元素，也可能是flash.
             pick: '#picker',
@@ -64,17 +109,17 @@
 			//是否要分片处理大文件上传。
 			chunked: true,
 			//分片大小
-			chunkSize: 1048576,
+			chunkSize: 10 * 1024 * 1024, // 10M 每个分片的大小限制,
 			//设置文件上传域的name。
-			fileVal: "file",
+			// fileVal: "file",
 			//上传并发数。允许同时最大上传进程数。
-			threads:3,
+			threads:10,
 			// 只允许选择图片文件。
-			accept: {
-			    title: 'Images',
-			    extensions: 'gif,jpg,jpeg,bmp,png',
-			    mimeTypes: 'image/*'
-			}
+			// accept: {
+			//     title: 'Images',
+			//     extensions: 'gif,jpg,jpeg,bmp,png',
+			//     mimeTypes: 'image/*'
+			// }
         });
  
         // 当有文件被添加进队列的时候（选择文件后调用）
@@ -113,6 +158,20 @@
 			paramMap.md5 = fileMd5;
 			//用户或文件的唯一ID
 		    paramMap.onlyId = fileId[fileMd5];
+			//文件开始大小
+			paramMap.start = block.start;
+			//文件最后大小
+			paramMap.end = block.end;
+			//文件大小和file.size一样
+			paramMap.total = block.total;
+			
+			console.log(file)
+			
+			
+			console.log("size"+file.size)
+			console.log("start"+block.start)
+			console.log("end"+block.end)
+			console.log("________________")
 		    // 删除其他数据
 		    // delete data.key;
 		});
@@ -125,10 +184,17 @@
  
         // 文件上传成功后会调用
         uploader.on( 'uploadSuccess', function( file,response ) {
-            $( '#'+file.id ).find('p.state').text('上传成功');
+			
 			if (response != null && response != undefined) {
-				console.log(response.data);
-				$( '#'+file.id ).find('p.path').text('路径'+response.data);
+				console.log("上传成功："+ response.status);
+				console.log("上传成功："+ JSON.stringify(response));
+				if (response.status == 200) {
+					$( '#'+file.id ).find('p.state').text('上传成功，正在同步到FDSF中...');
+				}else if (response.status == 517) {
+					$( '#'+file.id ).find('p.state').text('上传失败');
+					$( '#'+file.id ).find('p.path').text(response.msg);
+				}
+				
 			}
         });
  
@@ -138,7 +204,7 @@
         });
  
         // 文件上传完毕后会调用（不管成功还是失败）
-        uploader.on( 'uploadComplete', function( file ) {
+        uploader.on( 'uploadComplete', function( file ,response) {
             $( '#'+file.id ).find('.progress').fadeOut();
         });
  
@@ -153,21 +219,28 @@
             }
  
             if ( state === 'uploading' ) {
-                $btn.text('暂停上传');
-            } else {
-                $btn.text('开始上传');
-            }
+                $pbtn.text('暂停上传');
+            } else if (state === 'paused'){
+				 $pbtn.text('继续上传');
+			}
         });
  
         // 开始上传按钮点击事件响应
         $btn.on( 'click', function() {
-            if ( state === 'uploading' ) {
-                uploader.stop();
-            } else {
-                // 不存在则上传文件
-                uploader.upload();
-            }
+           uploader.upload();
         });
+		//暂停按钮
+		$pbtn.on( 'click', function() {
+		    if ( state === 'uploading' ) {
+		        uploader.stop();
+				console.log(uploader.getFiles("interrupt"));
+		    } else {
+		        // 上传文件
+		         uploader.upload(uploader.getFiles("interrupt"));
+		    }
+		});
+		
+		
 		
 		
 //随机数
@@ -196,6 +269,17 @@
         border-radius: 3px;
         overflow: hidden;
       }
+	  #pauseBtn {
+	    position: relative;
+	    display: inline-block;
+	    cursor: pointer;
+	    background: #EFEFEF;
+	    padding: 10px 15px;
+	    color: #2E2E2E;
+	    text-align: center;
+	    border-radius: 3px;
+	    overflow: hidden;
+	  }
       #ctlBtn:hover {
         background: #DDDDDD;
       }
@@ -204,11 +288,12 @@
   <body>
     <div id="uploader" class="wu-example">
 		<div id="">
-			用于大图片分片上传
+			用于大文件分片上传
 		</div>
         <div class="btns">
-            <div id="picker">选择文件</div>
+            <div id="picker" name="file">选择文件</div>
             <div id="ctlBtn" class="webuploader-upload">开始上传</div>
+			<div id="pauseBtn" class="webuploader-upload">暂停上传</div>
         </div>
         <!--用来存放文件信息-->
         <div id="thelist" class="uploader-list"></div>

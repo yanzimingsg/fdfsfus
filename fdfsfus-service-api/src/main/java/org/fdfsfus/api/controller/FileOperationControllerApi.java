@@ -1,13 +1,15 @@
 package org.fdfsfus.api.controller;
 
+import org.fdfsfus.pojo.CheckFile;
+import org.fdfsfus.pojo.FileMerge;
 import org.fdfsfus.result.GraceJSONResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.Map;
 
 /**
  * 文件操作接口
@@ -23,7 +25,7 @@ public interface FileOperationControllerApi {
      * @throws Exception 错误
      */
     @PostMapping("/checkFile")
-    public GraceJSONResult checkFile(@RequestParam Map<String, Object> paramMap) throws Exception;
+    public GraceJSONResult checkFile(CheckFile checkFile) throws Exception;
 
     /**
      * 文件下载
@@ -42,4 +44,16 @@ public interface FileOperationControllerApi {
      */
     @PostMapping("/fileDelete")
     public GraceJSONResult fileDelete(@RequestParam String path) throws Exception;
+
+    /**
+     * 上传文件到fdfs
+     * @param fileMerge
+     * @param request
+     * @return
+     * @throws Exception
+     */
+    @PostMapping("/FDFSMerge")
+    public GraceJSONResult FDFSMerge(FileMerge fileMerge, HttpServletRequest request) throws Exception;
+
+
 }

@@ -1,12 +1,12 @@
 package org.fdfsfus.service.Impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.github.tobato.fastdfs.domain.fdfs.MetaData;
 import com.github.tobato.fastdfs.domain.fdfs.StorePath;
 import com.github.tobato.fastdfs.domain.proto.storage.DownloadByteArray;
 import com.github.tobato.fastdfs.service.AppendFileStorageClient;
 import com.github.tobato.fastdfs.service.DefaultGenerateStorageClient;
 import com.github.tobato.fastdfs.service.FastFileStorageClient;
-import com.github.tobato.fastdfs.service.TrackerClient;
 import org.apache.commons.lang3.StringUtils;
 import org.fdfsfus.controller.share.BasicShare;
 import org.fdfsfus.pojo.FileDownload;
@@ -31,10 +31,6 @@ import java.util.Set;
 public class UploadFileServiceImpl extends BasicShare implements UploadFileService {
 
     @Autowired
-    private static TrackerClient trackerClient;
-
-
-    @Autowired
     private FastFileStorageClient storageClient;
 
     @Autowired
@@ -42,146 +38,121 @@ public class UploadFileServiceImpl extends BasicShare implements UploadFileServi
 
     @Autowired
     private DefaultGenerateStorageClient defaultGenerateStorageClient;
-//
-//    /**
-//     * 连接池
-//     */
-//    protected FdfsConnectionManager manager = createConnectionManager();
-//
-//    private FdfsConnectionManager createConnectionManager() {
-//        return new FdfsConnectionManager(createPool());
-//    }
-//
-//    private FdfsConnectionPool createPool() {
-//        PooledConnectionFactory factory = new PooledConnectionFactory();
-//        factory.setConnectTimeout(connectTimeout);
-//        factory.setSoTimeout(soTimeout);
-//        return new FdfsConnectionPool(new PooledConnectionFactory());
-//    }
-//
-//    protected <T> T executeStoreCmd(FdfsCommand<T> command) {
-//        return manager.executeFdfsCmd(store_address, command);
-//    }
 
     @Autowired
     private RedisOperator redis;
 
-    private StorePath storePath = null;
-
     @Override
-    public String uploadFileOne(MultipartFile file, String suffix) {
+    public String uploadFileOne(MultipartFile file, String suffix, String fileMd5, Set<MetaData> metaDataSet) {
+        StorePath storePath = null;
+
         try {
-            storePath = storageClient.uploadFile(file.getInputStream(), file.getSize(), suffix, null);
+            storePath = storageClient.uploadFile(file.getInputStream(), file.getSize(), suffix, metaDataSet);
+            redis.lpush(FDFS_MD5_LIST, fileMd5);
+            redis.set(FDFS_PATH+fileMd5,storePath.getPath());
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return storePath.getPath();
+        if (storePath != null) {
+            return storePath.getPath();
+        }else {
+            return "上传失败";
+        }
     }
 
     @Override
     public String uploadFileOne(MultipartFile file, String suffix, Set<MetaData> metaDataSet) {
+        StorePath storePath = null;
+
         try {
             storePath = storageClient.uploadFile(file.getInputStream(), file.getSize(), suffix, metaDataSet);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return storePath.getPath();
-    }
-
-    @Override
-    public String uploadIMGOne(MultipartFile file, String suffix) {
-        try {
-            storePath = storageClient.uploadImageAndCrtThumbImage(file.getInputStream(), file.getSize(), suffix, null);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (storePath != null) {
+            return storePath.getPath();
+        }else {
+            return "上传失败";
         }
-        return storePath.getPath();
     }
 
     @Override
     public String uploadIMGOne(MultipartFile file, String suffix, Set<MetaData> metaDataSet) {
+        StorePath storePath = null;
         try {
             storePath = storageClient.uploadImageAndCrtThumbImage(file.getInputStream(), file.getSize(), suffix, metaDataSet);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return storePath.getPath();
+        if (storePath != null) {
+            return storePath.getPath();
+        }else {
+            return "上传失败";
+        }
     }
 
     @Override
-    public String uploadBigFile(List<MultipartFile> files, String suffix, Integer chunk, Integer chunks, String fileMd5) throws IOException{
-        MultipartFile file = null;
-        //redis中获取当前应该从第几块开始(从0开始)
-        String chunkKey = CHUNK + fileMd5;
-
-        //如果不使用checkFile接口请加上不然会报错
-//        if (StringUtils.isBlank(chunkStr)) {
-//            redis.set(chunkKey,"0");
-//        }
-        String chunkStr = redis.get(chunkKey);
-        if (StringUtils.isEmpty(chunkStr)) {
-            return "无法获取当前文件chunk";
+    public String uploadIMGOne(MultipartFile file, String suffix, String fileMd5, Set<MetaData> metaDataSet) {
+        StorePath storePath = null;
+        try {
+            storePath = storageClient.uploadImageAndCrtThumbImage(file.getInputStream(), file.getSize(), suffix, metaDataSet);
+            redis.lpush(FDFS_MD5_LIST, fileMd5);
+            redis.set(FDFS_PATH+fileMd5,storePath.getPath());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        int chunkCurrInt = Integer.parseInt(chunkStr);
-        for (MultipartFile multipartFile : files) {
-            file = multipartFile;
-            fileUpload( file, chunkKey, chunkCurrInt, fileMd5, suffix, chunk);
+        if (storePath != null) {
+            return storePath.getPath();
+        }else {
+            return "上传失败";
         }
-        //上传完成将文件MD5储存在redis里
-        if (chunk + 1 == chunks) {
-            redis.lpush(FILEMD5LIST, fileMd5);
-        }
-        return storePath.getPath();
     }
 
     @Override
-    public String uploadBigFileConcurrent(Map<Integer, MultipartFile> files, String suffix, Integer chunks, String fileMd5) throws IOException {
+    public String uploadBigFile(Map<Integer, MultipartFile> files, String suffix, Integer chunks, String fileMd5) throws IOException {
+        StorePath storePath = null;
         MultipartFile file = null;
-        String chunkKey = CHUNK + fileMd5;
-        String chunkStr = redis.get(chunkKey);
-        //如果不使用checkFile接口请加上不然会报错
-//        if (StringUtils.isBlank(chunkStr)) {
-//            redis.set(chunkKey,"0");
-//        }
-        if (StringUtils.isEmpty(chunkStr)) {
-            return "无法获取当前文件chunk";
-        }
-        int chunkCurrInt = Integer.parseInt(chunkStr);
-        for (Integer chunk : files.keySet()) {
-            MultipartFile file1 = files.get(chunk);
-            fileUpload( file1, chunkKey, chunkCurrInt, fileMd5, suffix, chunk);
-            //将文件MD5储存在redis里
-            if (chunk + 1 == chunks) {
-                redis.lpush(FILEMD5LIST, fileMd5);
+        for (int i=0;i<chunks;i++) {
+            MultipartFile file1 = files.get(i);
+            String[] list = file1.getName().split("_");
+            long historyUpload = Long.parseLong(list[1]);
+            String fileNum = redis.get(NUM_UP_FILE+fileMd5);
+            if (StringUtils.isBlank(fileNum)) {
+                fileUpload( file1, fileMd5, suffix, i, historyUpload);
+            }else{
+                if (!(i<=Integer.parseInt(fileNum))){
+                    fileUpload( file1, fileMd5, suffix, i, historyUpload);
+                }
             }
         }
-        return storePath.getPath();
+         storePath = JSONObject.parseObject(redis.get(FASTDFSPATH + fileMd5),StorePath.class);
+        redis.lpush(FDFS_MD5_LIST, fileMd5);
+        if (storePath != null) {
+            return storePath.getPath();
+        }else {
+            return "上传失败";
+        }
     }
 
-    private void fileUpload(MultipartFile file,String chunkKey,Integer chunkCurrInt,String fileMd5,String suffix,Integer chunk) throws IOException {
+
+    private void fileUpload(MultipartFile file,String fileMd5,String suffix,Integer chunk,long historyUpload ) throws IOException {
+        StorePath storePath = null;
         String GroupPath = null;
         if (!file.isEmpty()) {
-            //获取已经上传文件大小
-            long historyUpload = 0L;
-            String historyUploadStr = redis.get(HISTORYUPLOAD + fileMd5);
-            if (StringUtils.isNotBlank(historyUploadStr)) {
-                historyUpload = Long.parseLong(historyUploadStr);
-            }
-            redis.set(chunkKey, String.valueOf(chunkCurrInt + 1));
             if (chunk == 0) {
                 storePath = appendFileStorageClient.uploadAppenderFile(DEFAULT_GROUP, file.getInputStream(), file.getSize(), suffix);
-                GroupPath = storePath.getPath();
-                redis.set(FASTDFSPATH + fileMd5, GroupPath);
-                System.out.println(GroupPath);
+                String storePathStr  =  JSONObject.toJSONString(storePath);
+                redis.set(FASTDFSPATH + fileMd5, storePathStr);
+                redis.set(FDFS_PATH+fileMd5,storePath.getPath());
+                redis.set(NUM_UP_FILE+fileMd5,String.valueOf(chunk));
             } else {
-                GroupPath = redis.get(FASTDFSPATH + fileMd5);
-                //追加方式实际实用如果中途出错多次,可能会出现重复追加情况,这里改成修改模式,即时多次传来重复文件块,依然可以保证文件拼接正确
+                storePath = JSONObject.parseObject(redis.get(FASTDFSPATH + fileMd5),StorePath.class);
+                GroupPath = storePath.getPath();
+                //追加方式实际实用如果中途出错多次,可能会出现重复追加情况,这里用修改模式,即时多次传来重复文件块,依然可以保证文件拼接正确
                 appendFileStorageClient.modifyFile(DEFAULT_GROUP, GroupPath, file.getInputStream(),
                         file.getSize(), historyUpload);
+                redis.set(NUM_UP_FILE+fileMd5,String.valueOf(chunk));
             }
-            //修改历史上传大小
-            historyUpload = historyUpload + file.getSize();
-            redis.set(HISTORYUPLOAD + fileMd5, String.valueOf(historyUpload));
         }
     }
 
