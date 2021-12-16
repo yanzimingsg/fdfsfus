@@ -24,7 +24,7 @@ public static final  String FACE_PATH = "/Users/yanziming/Documents/mike/fdfs";
 ```
 
 # 接口测试
-普通的文件上传可以直接使用[postman](https://www.postman.com/)来测试，对于分片上传推荐使用百度的[WebUploader](http://fex.baidu.com/webuploader/),先关的前端资料可以参考项目里面的fdfsfusInterfaceTest文件夹。
+普通的文件上传可以直接使用[postman](https://www.postman.com/)来测试，对于分片上传推荐使用百度的[WebUploader](http://fex.baidu.com/webuploader/),相关的前端资料可以参考项目里面的fdfsfusInterfaceTest文件夹。
 
 # 后续更新
 1. 批量大文件并发上传
